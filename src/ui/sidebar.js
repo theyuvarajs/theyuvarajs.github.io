@@ -3,7 +3,11 @@
 // Sections and Tags are generated entirely from the loaded sheet
 // data — add a new tab to the spreadsheet and it shows up here
 // with zero code changes. Recent Articles comes from a small
-// localStorage history of visited IDs.
+// localStorage history of visited IDs. The search box itself is
+// no longer rendered in the sidebar — it's mounted once into the
+// topbar in app.js so it's global across every page — but its
+// builder, renderSearchBox(), still lives in this module and is
+// exported for that reuse.
 // ============================================================
 
 import { el } from "../utils/dom.js";
@@ -23,10 +27,16 @@ export function pushRecent(id) {
   }
 }
 
-function renderSearchBox(kb) {
+/**
+ * Builds a self-contained search box (input + live dropdown of results).
+ * Mounted once into the topbar in app.js, so it's available globally on
+ * every page (home, an article, a section, a tag) rather than tied to
+ * any one route's rendered content.
+ */
+export function renderSearchBox(kb) {
   const input = el("input", { type: "search", class: "search-input", placeholder: "Search everything…" });
   const results = el("div", { class: "search-results" });
-  const box = el("div", { class: "sidebar-search" }, [input, results]);
+  const box = el("div", { class: "global-search" }, [input, results]);
 
   input.addEventListener("input", () => {
     const query = input.value.trim();
@@ -104,5 +114,5 @@ function renderRecent(kb) {
 export function renderSidebar(kb) {
   const nav = document.getElementById("sidebar-nav");
   nav.innerHTML = "";
-  nav.append(renderSearchBox(kb), renderSections(kb), renderTags(kb), renderRecent(kb));
+  nav.append(renderSections(kb), renderTags(kb), renderRecent(kb));
 }

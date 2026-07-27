@@ -9,7 +9,7 @@
 import { fetchAllSheets } from "./data/loader.js";
 import { buildKnowledgeBase } from "./models/knowledge.js";
 import { renderKnowledgeItem, renderHome, renderList, renderNotFound } from "./ui/renderer.js";
-import { renderSidebar, pushRecent } from "./ui/sidebar.js";
+import { renderSidebar, renderSearchBox, pushRecent } from "./ui/sidebar.js";
 import { initRouter } from "./ui/router.js";
 import { initTheme } from "./ui/theme.js";
 
@@ -20,7 +20,7 @@ async function main() {
   document.title = cfg.SITE_TITLE;
 
   initTheme(document.getElementById("theme-toggle"));
-  setupMobileNav();
+  setupSidebarToggle();
   setupBackToTop();
 
   const content = document.getElementById("content");
@@ -70,15 +70,41 @@ async function main() {
   }
 
   renderSidebar(kb);
+  document.getElementById("topbar-search").appendChild(renderSearchBox(kb));
   initRouter(route);
 }
 
-function setupMobileNav() {
+const SIDEBAR_COLLAPSED_KEY = "kb-sidebar-collapsed";
+const isMobile = () => window.matchMedia("(max-width: 900px)").matches;
+
+// One button, two behaviors: on mobile it slides the sidebar in/out as an
+// overlay (as before); on desktop it collapses/expands it in place, and
+// remembers the choice in localStorage so it stays collapsed on reload.
+function setupSidebarToggle() {
   const sidebar = document.getElementById("sidebar");
   const backdrop = document.getElementById("backdrop");
+
+  try {
+    if (!isMobile() && localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1") {
+      sidebar.classList.add("collapsed");
+    }
+  } catch (e) {
+    // localStorage unavailable — sidebar just starts expanded.
+  }
+
   document.getElementById("nav-toggle").addEventListener("click", () => {
-    sidebar.classList.toggle("open");
-    backdrop.classList.toggle("show");
+    if (isMobile()) {
+      sidebar.classList.toggle("open");
+      backdrop.classList.toggle("show");
+    } else {
+      const collapsed = sidebar.classList.toggle("collapsed");
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? "1" : "0");
+      } catch (e) {
+        // localStorage unavailable — the toggle still works, it just
+        // won't be remembered on the next visit.
+      }
+    }
   });
   backdrop.addEventListener("click", closeSidebarOnMobile);
 }

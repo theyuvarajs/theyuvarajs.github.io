@@ -4,7 +4,8 @@
 // a card with a language label, a copy button, and (for <code>)
 // syntax highlighting via the highlight.js bundle loaded in
 // index.html. <command> blocks are visually styled as a terminal
-// (each line gets a "$ " prompt) but copy the raw command text.
+// but render (and copy) the raw command text, with no leading
+// "$ " prompt on each line.
 // ============================================================
 
 import { el } from "../utils/dom.js";
@@ -39,11 +40,11 @@ export function renderCodeBlock({ code, language = "", isCommand = false }) {
 
   const codeEl = el("code", displayLang ? { class: "language-" + displayLang } : {});
   codeEl.textContent = isCommand
-    ? code.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => "$ " + l).join("\n")
+    ? code.split("\n").map((l) => l.trim()).filter(Boolean).join("\n")
     : code;
 
   const pre = el("pre", {}, [codeEl]);
-  const wrap = el("div", { class: "code-block" + (isCommand ? " code-block--command" : "") }, [header, pre]);
+  const wrap = el("div", { class: "block code-block" + (isCommand ? " code-block--command" : "") }, [header, pre]);
 
   if (window.hljs && !isCommand) {
     try { window.hljs.highlightElement(codeEl); } catch (e) { /* unknown language — leave unhighlighted */ }

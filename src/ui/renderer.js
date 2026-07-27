@@ -108,6 +108,21 @@ function renderDetails(node) {
   return details;
 }
 
+/** Renders an item's parsed Content as DOM — shared by the full article
+ *  page and the feed cards on the home/list pages, so "full content on
+ *  the card" is always pixel-identical to the individual article view. */
+function renderArticleBody(item) {
+  return el("div", { class: "article-body" }, item.ast.map(renderBlock).filter(Boolean));
+}
+
+/** Tags, rendered as their own block with room to breathe — always placed
+ *  after the content (not squeezed above it) so a trailing <note>,
+ *  <command>, or any other block never visually collides with them. */
+function renderTags(item) {
+  if (!item.tags.length) return null;
+  return el("div", { class: "tags-footer tag-row" }, item.tags.map((t) => el("a", { class: "tag", href: `#tag:${encodeURIComponent(t)}` }, [t])));
+}
+
 /** The single renderer: any KnowledgeItem, from any sheet, renders through here. */
 export function renderKnowledgeItem(item, kb) {
   const header = el("header", { class: "article-header" }, [
@@ -115,19 +130,20 @@ export function renderKnowledgeItem(item, kb) {
       el("a", { class: "article-section", href: `#section:${item.sectionSlug}` }, [item.section]),
       el("span", { class: "article-id" }, [item.id])
     ]),
-    el("h1", {}, [item.title]),
-    item.tags.length
-      ? el("div", { class: "tag-row" }, item.tags.map((t) => el("a", { class: "tag", href: `#tag:${encodeURIComponent(t)}` }, [t])))
-      : null
+    el("h1", {}, [item.title])
   ]);
 
-  const body = el("div", { class: "article-body" }, item.ast.map(renderBlock).filter(Boolean));
+  const body = renderArticleBody(item);
 
   const article = el("article", { class: "article" }, [header, body]);
 
+  const footerBlocks = [];
+  const tags = renderTags(item);
+  if (tags) footerBlocks.push(tags);
+
   const relatedItems = item.related.map((id) => kb.items.get(id)).filter(Boolean);
   if (relatedItems.length) {
-    article.appendChild(
+    footerBlocks.push(
       el("div", { class: "related-block" }, [
         el("h3", {}, ["Related Articles"]),
         el(
@@ -144,50 +160,64 @@ export function renderKnowledgeItem(item, kb) {
     );
   }
 
+  if (footerBlocks.length) {
+    article.appendChild(el("div", { class: "article-footer" }, footerBlocks));
+  }
+
   return article;
 }
 
-/** Home page: an overview grid of sections. */
+/**
+ * A feed card: full rendered content of one article, shown inline so it
+ * can be read without navigating anywhere. The section link, the ID
+ * badge, the title, and the "Open ↗" link all point at the individual
+ * article page (`#ID`) — that page still exists purely so a single
+ * article has its own shareable URL. Tags sit in their own footer
+ * strip at the end of the card, below the content.
+ */
+function renderFeedCard(item) {
+  const header = el("div", { class: "feed-card__header" }, [
+    el("div", { class: "article-meta" }, [
+      el("a", { class: "article-section", href: `#section:${item.sectionSlug}` }, [item.section]),
+      el("span", { class: "article-id" }, [item.id])
+    ]),
+    el("a", { class: "feed-card__permalink", href: `#${item.id}`, title: "Open this article on its own page — for sharing a direct link" }, ["Open ↗"])
+  ]);
+
+  const title = el("h2", { class: "feed-card__title" }, [el("a", { href: `#${item.id}` }, [item.title])]);
+
+  return el("article", { class: "feed-card" }, [header, title, renderArticleBody(item), renderTags(item)]);
+}
+
+/** Builds the "one article per card, full content, list one by one" feed
+ *  used by both the home page and the section/tag browsing pages. */
+function renderFeed(items) {
+  return items.length
+    ? el("div", { class: "article-feed" }, items.map(renderFeedCard))
+    : el("div", { class: "empty-state" }, ["Nothing here yet."]);
+}
+
+/** Home page: every article in full, one after another. Search lives
+ *  globally in the topbar now (see app.js), not on this page. */
 export function renderHome(kb, mount) {
   mount.innerHTML = "";
   mount.appendChild(
     el("div", { class: "home" }, [
       el("h1", {}, ["Knowledge Base"]),
       el("p", { class: "home-sub" }, [`${kb.list.length} article${kb.list.length === 1 ? "" : "s"} across ${kb.sections.length} section${kb.sections.length === 1 ? "" : "s"}.`]),
-      el(
-        "div",
-        { class: "section-grid" },
-        kb.sections.map((s) =>
-          el("a", { class: "section-card", href: `#section:${s.slug}` }, [
-            el("h3", {}, [s.name]),
-            el("span", { class: "count-pill" }, [`${s.count} article${s.count === 1 ? "" : "s"}`])
-          ])
-        )
-      )
+      renderFeed(kb.list)
     ])
   );
 }
 
-/** Section or tag browsing view: a grid of article cards. */
+/** Section or tag browsing view: same full-content, one-by-one feed, scoped to a subset. */
 export function renderList(title, items, mount) {
   mount.innerHTML = "";
   mount.appendChild(
     el("div", { class: "article-list-page" }, [
       el("h1", {}, [title]),
       el("p", { class: "home-sub" }, [`${items.length} article${items.length === 1 ? "" : "s"}`]),
-      items.length
-        ? el(
-            "div",
-            { class: "card-grid" },
-            items.map((i) =>
-              el("a", { class: "article-card", href: `#${i.id}` }, [
-                el("div", { class: "article-card__meta" }, [el("span", { class: "article-id" }, [i.id]), el("span", {}, [i.section])]),
-                el("h3", {}, [i.title]),
-                i.tags.length ? el("div", { class: "tag-row" }, i.tags.slice(0, 4).map((t) => el("span", { class: "tag" }, [t]))) : null
-              ])
-            )
-          )
-        : el("div", { class: "empty-state" }, ["Nothing here yet."])
+      renderFeed(items)
     ])
   );
 }
