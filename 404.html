@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Redirecting…</title>
+<script>
+  // GitHub Pages serves this file for any path it doesn't recognize.
+  // The site routes entirely through the URL hash (#SOME-ID), which
+  // never touches the server, so this page should rarely be hit —
+  // only by an old bookmark/link that used a path segment instead.
+  //
+  // We convert that path into the modern hash route and send the
+  // visitor to the site root. Computed from the URL itself (nothing
+  // hardcoded), so it keeps working under any repo name or sub-path.
+  (function () {
+    var parts = location.pathname.split("/").filter(Boolean);
+    // Project page (username.github.io/repo/...): first segment is
+    // the repo name and must stay in the base URL. User/org page
+    // (username.github.io/...): no such prefix. We can't know for
+    // sure which this is, so assume project-page first; if there's
+    // only one segment total, treat it as the id at the root instead.
+    var repoBase = parts.length > 1 ? "/" + parts[0] : "";
+    var id = parts.length > 1 ? parts.slice(1).join("/") : parts.join("/");
+    var target = location.origin + repoBase + "/" + location.search + (id ? "#" + id : "");
+    location.replace(target);
+  })();
+</script>
+</head>
+<body>
+  <p>Redirecting…</p>
+</body>
+</html>
